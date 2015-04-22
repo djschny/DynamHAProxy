@@ -4,8 +4,8 @@ import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
@@ -36,7 +36,7 @@ public class ElasticSearchJoiner implements Joiner {
   
   private ClusterStateChangeReceiver receiver;
   private Node node;
-  private Timer clusterMemberRefreshTimer;
+  private ScheduledThreadPoolExecutor clusterMemberRefreshTimer;
   private int refreshPollIntervalSeconds = 30;
   
   public interface Properties {
@@ -46,10 +46,12 @@ public class ElasticSearchJoiner implements Joiner {
   
   @Override
   public void setProperties( Map<String, String> properties ) {
-    clusterName = StringUtils.trimToNull(properties.get(Properties.CLUSTER_NAME)) != null ?
-        StringUtils.trimToNull(properties.get(Properties.CLUSTER_NAME)) : clusterName;
-    refreshPollIntervalSeconds = StringUtils.trimToNull(properties.get(Properties.REFRESH_POLL_INTERVAL_SECONDS)) != null ?
-        Integer.parseInt(properties.get(Properties.REFRESH_POLL_INTERVAL_SECONDS)) : refreshPollIntervalSeconds;
+    if( properties != null ) {
+      clusterName = StringUtils.trimToNull(properties.get(Properties.CLUSTER_NAME)) != null ?
+          StringUtils.trimToNull(properties.get(Properties.CLUSTER_NAME)) : clusterName;
+      refreshPollIntervalSeconds = StringUtils.trimToNull(properties.get(Properties.REFRESH_POLL_INTERVAL_SECONDS)) != null ?
+          Integer.parseInt(properties.get(Properties.REFRESH_POLL_INTERVAL_SECONDS)) : refreshPollIntervalSeconds;
+    }
   }
 
   @Override
@@ -65,17 +67,18 @@ public class ElasticSearchJoiner implements Joiner {
   @Override
   public void join() {
     node = joinElasticsearch();
-    clusterMemberRefreshTimer = new Timer(ElasticSearchJoiner.class.getName(), true );
-    clusterMemberRefreshTimer.scheduleAtFixedRate( new ClusterRefreshTask(), 0, TimeUnit.SECONDS.toMillis(refreshPollIntervalSeconds) );
+    clusterMemberRefreshTimer = new ScheduledThreadPoolExecutor(1);
+    clusterMemberRefreshTimer.scheduleAtFixedRate( new ClusterRefreshTask(), 0, refreshPollIntervalSeconds, TimeUnit.SECONDS );
   }
 
   @Override
   public void leave() {
-    clusterMemberRefreshTimer.cancel();
+    clusterMemberRefreshTimer.shutdown();
     leaveElasticsearch();
   }
   
   protected Node joinElasticsearch() {
+    // TODO - set the name of this node to be "HAPRoxy - hostname"
     return NodeBuilder.nodeBuilder().clusterName(clusterName).client(true).data(false).node();
   }
 
@@ -88,14 +91,18 @@ public class ElasticSearchJoiner implements Joiner {
     
     HashSet<ClusterMember> members = new HashSet<ClusterMember>();
     for( NodeInfo ni : response.getNodes() ) {
-      // TODO need to find out from ES folks the following items
-      // 1) How is best way to get the proper address to use (in a multiple NIC machine, we want
-      //    the one that ES is bound to and we also ideally want IP address to make sure we don't
-      //    use a DNS name that might not be resolvable from the HAProxy node.
-      // 2) Best way to modify ES code base so clients getting settings like below don't have to duplicate
-      //    magic strings and default logic.
-      int httpPort = ni.getSettings().getAsInt("http.netty.port", ni.getSettings().getAsInt("http.port",9200));
-      members.add( new ClusterMember().setAddress( new InetSocketAddress(ni.getHostname(), httpPort) ) );
+      
+      // TDODO - do not add ourself; cannot figure out how to get unique node ID for ourself
+      if( !ni.getNode().getId().equals(node) ) {
+        // TODO need to find out from ES folks the following items
+        // 1) How is best way to get the proper address to use (in a multiple NIC machine, we want
+        //    the one that ES is bound to and we also ideally want IP address to make sure we don't
+        //    use a DNS name that might not be resolvable from the HAProxy node.
+        // 2) Best way to modify ES code base so clients getting settings like below don't have to duplicate
+        //    magic strings and default logic.
+        int httpPort = ni.getSettings().getAsInt("http.netty.port", ni.getSettings().getAsInt("http.port",9200));
+        members.add( new ClusterMember().setAddress( new InetSocketAddress(ni.getHostname(), httpPort) ) );
+      }
     }
     return members;
   }
@@ -109,7 +116,9 @@ public class ElasticSearchJoiner implements Joiner {
   private class ClusterRefreshTask extends TimerTask {
     @Override
     public void run() {
+      System.out.println( Thread.currentThread().getName() + "Entering run" );
       receiver.refresh( getClusterMembers(node) );
+      System.out.println( Thread.currentThread().getName() + "Leaving run" );
     }
     
   }
