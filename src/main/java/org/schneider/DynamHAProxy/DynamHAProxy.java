@@ -4,8 +4,8 @@ import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.schneider.DynamHAProxy.joiners.ElasticSearchJoiner;
 import org.schneider.DynamHAProxy.joiners.Joiner;
 import org.schneider.DynamHAProxy.joiners.LocalHostJoiner;
@@ -41,7 +41,7 @@ public class DynamHAProxy {
   
   public DynamHAProxy( String joiner, Map<String,String> properties ) {
     this.joiner = availableJoiners.get( joiner );
-    if( joiner == null ) {
+    if( this.joiner == null ) {
       throw new IllegalArgumentException( "Joiner " + joiner + " not found. Make sure the joiner name " +
                                           "is correct or your custom joiner is on the classpath. Currently available " +
                                           "joiners: " ); // TODO print map once put in apach collection utils
@@ -50,7 +50,7 @@ public class DynamHAProxy {
   }
   
   public void start() {
-    logger.info( "Initializing using joiner " + joiner.getName() );
+    logger.info( "Initializing using joiner {}", joiner );
     try {
       instance = joiner.newInstance();
     } catch (InstantiationException | IllegalAccessException e) {
@@ -58,7 +58,7 @@ public class DynamHAProxy {
     }
     instance.setProperties( properties );
     instance.setClusterStateChange( new HAProxyClusterStateChangeReceiver() );
-    logger.info( "Starting service using joiner " + joiner.getCanonicalName() );
+    logger.info( "Starting service using joiner {}", joiner.getCanonicalName() );
     instance.join();
   }
   

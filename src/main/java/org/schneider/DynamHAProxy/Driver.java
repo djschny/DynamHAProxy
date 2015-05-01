@@ -7,13 +7,14 @@ import java.util.Map;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.DefaultConfiguration;
 
 /**
  * CommandLine entry point to the application.
@@ -26,20 +27,22 @@ public class Driver {
   
   @SuppressWarnings("static-access")
   public static void main( String[] args ) {
-    
-    // TODO - spruce up logging
-    LogManager.getLogger( MethodHandles.lookup().lookupClass().getPackage().toString() ).addAppender( new ConsoleAppender() );
-    
-    Logger logger = LogManager.getLogger( MethodHandles.lookup().lookupClass() );
+	  System.setProperty(DefaultConfiguration.DEFAULT_LEVEL, "DEBUG");
+   
+	  Logger logger = LogManager.getLogger( MethodHandles.lookup().lookupClass() );
 
     // create the command line parser
-    CommandLineParser parser = new BasicParser();
+    CommandLineParser parser = new GnuParser();
 
     // create the Options
     Options options = new Options();
     
-    options.addOption( OptionBuilder.withLongOpt("joiner").isRequired().hasArg()
-                       .withDescription("name of the joiner to use").create('j') );
+    options.addOption( OptionBuilder.withLongOpt("joiner")
+    					.isRequired()
+    					.hasArg()
+    					.withArgName("joiner")
+    					.withDescription("name of the joiner to use")
+    					.create() );
 
     try {
       // parse the command line arguments
@@ -65,6 +68,6 @@ public class Driver {
         properties.put( key.toString().replace(JOINER_PROPERTY_PREFIX, ""), System.getProperty(key.toString()) );
       }
     }
-    return properties.isEmpty() ? null : properties;
+    return properties;
   }
 }
