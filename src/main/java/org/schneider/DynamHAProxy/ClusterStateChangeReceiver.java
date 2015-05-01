@@ -12,6 +12,6 @@ public interface ClusterStateChangeReceiver {
   
   /* Cluster specific methods */
   public boolean memberJoined( ClusterMember member );
-  public boolean memberTerminate( ClusterMember member );
+  public boolean memberTerminated( ClusterMember member );
   public boolean refresh( Collection<ClusterMember> members );
 }

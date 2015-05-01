@@ -28,4 +28,10 @@ public class ClusterMember {
   
   public Double getWeight() { return weight; }
   public ClusterMember setWeight( Double weight ) { this.weight = weight; return this; }
+  @Override
+  public String toString() {
+	return String.format("ClusterMember [address=%s, name=%s, weight=%s]",
+			address, name, weight);
+  }
+ 
 }
