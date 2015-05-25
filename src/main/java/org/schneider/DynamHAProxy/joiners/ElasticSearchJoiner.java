@@ -12,10 +12,12 @@ import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoRequest;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
 import org.elasticsearch.common.lang3.StringUtils;
+import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.schneider.DynamHAProxy.ClusterMember;
 import org.schneider.DynamHAProxy.ClusterStateChangeReceiver;
+import org.schneider.DynamHAProxy.DynamHAProxy;
 
 /**
  * Joiner for the ElasticSearch Zen discovery protocol. This will join
@@ -78,8 +80,9 @@ public class ElasticSearchJoiner implements Joiner {
   }
   
   protected Node joinElasticsearch() {
-    // TODO - set the name of this node to be "HAPRoxy - hostname"
-    return NodeBuilder.nodeBuilder().clusterName(clusterName).client(true).data(false).node();
+	NodeBuilder nBuilder = NodeBuilder.nodeBuilder().clusterName(clusterName).client(true).data(false);
+	nBuilder.settings(nBuilder.settings().put("node.name",DynamHAProxy.class.getSimpleName() + "-" + NetworkUtils.getLocalHostName("")));
+	return nBuilder.node();
   }
 
   protected void leaveElasticsearch() {
